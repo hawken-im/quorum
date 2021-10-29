@@ -472,43 +472,9 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 			continue
 		}
 
-		originalData := trx.Data
-
-		if trx.Type == quorumpb.TrxType_POST && producer.grpItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-			//for post, private group, encrypted by pgp for all announced group user
-			//just try decrypt it, if failed, save the original encrypted data
-			//the reason for that is, for private group, before owner add producer, owner is the only producer,
-			//since owner also needs to show POST data, and all announced user will encrypt for owner pubkey
-			//owner can actually decrypt POST
-			//for other producer, they can not decrpyt POST
-			ks := localcrypto.GetKeystore()
-			decryptData, err := ks.Decrypt(producer.grpItem.UserEncryptPubkey, trx.Data)
-			if err == nil {
-				//set trx.Data to decrypted []byte
-				trx.Data = decryptData
-			}
-		} else {
-			//decode trx data
-			ciperKey, err := hex.DecodeString(producer.grpItem.CipherKey)
-			if err != nil {
-				return err
-			}
-
-			decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-			if err != nil {
-				return err
-			}
-
-			//set trx.Data to decrypted []byte
-			trx.Data = decryptData
-		}
-
 		molaproducer_log.Debugf("<%s> apply trx <%s>", producer.groupId, trx.TrxId)
 		//apply trx content
 		switch trx.Type {
-		case quorumpb.TrxType_POST:
-			molaproducer_log.Debugf("<%s> apply POST trx", producer.groupId)
-			nodectx.GetDbMgr().AddPost(trx, producer.nodename)
 		case quorumpb.TrxType_AUTH:
 			molaproducer_log.Debugf("<%s> apply AUTH trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateBlkListItem(trx, producer.nodename)
@@ -526,9 +492,6 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 		default:
 			molaproducer_log.Warningf("<%s> unsupported msgType <%s>", producer.groupId, trx.Type)
 		}
-
-		//set trx data to original (encrypted)
-		trx.Data = originalData
 
 		//save trx to db
 		nodectx.GetDbMgr().AddTrx(trx, producer.nodename)

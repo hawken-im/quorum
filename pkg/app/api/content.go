@@ -74,6 +74,11 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 		//decrypt trx data
 		if trx.Type == quorumpb.TrxType_POST && groupitem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 			//for post, private group, encrypted by pgp for all announced group user
+			//just try decrypt it, if failed, save the original encrypted data
+			//the reason for that is, for private group, before owner add producer, owner is the only producer,
+			//since owner also needs to show POST data, and all announced user will encrypt for owner pubkey
+			//owner can actually decrypt POST
+			//for other producer, they can not decrpyt POST
 			ks := localcrypto.GetKeystore()
 			decryptData, err := ks.Decrypt(groupitem.UserEncryptPubkey, trx.Data)
 			if err != nil {

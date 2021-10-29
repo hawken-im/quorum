@@ -1,11 +1,9 @@
 package chain
 
 import (
-	"encoding/hex"
 	"errors"
 
 	logging "github.com/ipfs/go-log/v2"
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -205,41 +203,9 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 			continue
 		}
 
-		originalData := trx.Data
-
-		//new trx, apply it
-		if trx.Type == quorumpb.TrxType_POST && user.grpItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-			//for post, private group, encrypted by pgp for all announced group user
-			ks := localcrypto.GetKeystore()
-			decryptData, err := ks.Decrypt(user.grpItem.UserEncryptPubkey, trx.Data)
-			if err != nil {
-				return err
-			}
-
-			//set trx.Data to decrypted []byte
-			trx.Data = decryptData
-		} else {
-			//decode trx data
-			ciperKey, err := hex.DecodeString(user.grpItem.CipherKey)
-			if err != nil {
-				return err
-			}
-
-			decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-			if err != nil {
-				return err
-			}
-
-			//set trx.Data to decrypted []byte
-			trx.Data = decryptData
-		}
-
 		molauser_log.Debugf("<%s> try apply trx <%s>", user.groupId, trx.TrxId)
 		//apply trx content
 		switch trx.Type {
-		case quorumpb.TrxType_POST:
-			molauser_log.Debugf("<%s> apply POST trx", user.groupId)
-			nodectx.GetDbMgr().AddPost(trx, nodename)
 		case quorumpb.TrxType_AUTH:
 			molauser_log.Debugf("<%s> apply AUTH trx", user.groupId)
 			nodectx.GetDbMgr().UpdateBlkListItem(trx, nodename)
@@ -257,9 +223,6 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 		default:
 			molauser_log.Warningf("<%s> unsupported msgType <%s>", user.groupId, trx.Type)
 		}
-
-		//set trx data to original(encrypted)
-		trx.Data = originalData
 
 		//save trx to db
 		nodectx.GetDbMgr().AddTrx(trx, nodename)

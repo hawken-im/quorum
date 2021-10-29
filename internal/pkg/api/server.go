@@ -48,7 +48,6 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.GET("/v1/block/:group_id/:block_id", h.GetBlockById)
 		r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 		r.GET("/v1/groups", h.GetGroups)
-		r.GET("/v1/group/:group_id/content", h.GetGroupCtn)
 		r.GET("/v1/group/:group_id/deniedlist", h.GetDeniedUserList)
 		r.GET("/v1/group/:group_id/producers", h.GetGroupProducers)
 		r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedGroupUsers)

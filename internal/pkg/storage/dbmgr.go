@@ -2,7 +2,6 @@ package storage
 
 import (
 	"errors"
-	"fmt"
 
 	logging "github.com/ipfs/go-log/v2"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
@@ -15,7 +14,6 @@ const TRX_PREFIX string = "trx" //trx
 const BLK_PREFIX string = "blk" //block
 const SEQ_PREFIX string = "seq" //sequence
 const GRP_PREFIX string = "grp" //group
-const CNT_PREFIX string = "cnt" //content
 const ATH_PREFIX string = "ath" //auth
 const PRD_PREFIX string = "prd" //producer
 const ANN_PREFIX string = "ann" //announce
@@ -352,73 +350,6 @@ func (dbMgr *DbMgr) GetGroupsBytes() ([][]byte, error) {
 	})
 	return groupItemList, err
 }
-
-func (dbMgr *DbMgr) AddPost(trx *quorumpb.Trx, prefix ...string) error {
-	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + GRP_PREFIX + "_" + CNT_PREFIX + "_" + trx.GroupId + "_" + fmt.Sprint(trx.TimeStamp) + "_" + trx.TrxId
-	dbmgr_log.Infof("Add POST with key %s", key)
-
-	var ctnItem *quorumpb.PostItem
-	ctnItem = &quorumpb.PostItem{}
-
-	ctnItem.TrxId = trx.TrxId
-	ctnItem.PublisherPubkey = trx.SenderPubkey
-	ctnItem.Content = trx.Data
-	ctnItem.TimeStamp = trx.TimeStamp
-	ctnBytes, err := proto.Marshal(ctnItem)
-	if err != nil {
-		return err
-	}
-
-	return dbMgr.Db.Set([]byte(key), ctnBytes)
-}
-
-func (dbMgr *DbMgr) GetGrpCtnt(groupId string, ctntype string, prefix ...string) ([]*quorumpb.PostItem, error) {
-	var ctnList []*quorumpb.PostItem
-	nodeprefix := getPrefix(prefix...)
-	pre := nodeprefix + GRP_PREFIX + "_" + CNT_PREFIX + "_" + groupId + "_"
-	err := dbMgr.Db.PrefixForeach([]byte(pre), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-
-		item := quorumpb.PostItem{}
-		perr := proto.Unmarshal(v, &item)
-		if perr != nil {
-			return perr
-		}
-		ctnList = append(ctnList, &item)
-		return nil
-	})
-
-	return ctnList, err
-}
-
-//func (dbMgr *DbMgr) GetTrxContent(trxId string, prefix ...string) (*quorumpb.Trx, error) {
-//	nodeprefix := getPrefix(prefix...)
-//	var trx quorumpb.Trx
-//	key := nodeprefix + TRX_PREFIX + "_" + trxId
-//	err := dbMgr.Db.View(func(txn *badger.Txn) error {
-//		item, err := txn.Get([]byte(key))
-//		if err != nil {
-//			return err
-//		}
-//
-//		trxBytes, err := item.ValueCopy(nil)
-//		if err != nil {
-//			return err
-//		}
-//
-//		err = proto.Unmarshal(trxBytes, &trx)
-//		if err != nil {
-//			return err
-//		}
-//
-//		return nil
-//	})
-//
-//	return &trx, err
-//}
 
 func (dbMgr *DbMgr) UpdateBlkListItem(trx *quorumpb.Trx, prefix ...string) (err error) {
 	nodeprefix := getPrefix(prefix...)
